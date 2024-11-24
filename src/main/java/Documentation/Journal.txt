@@ -1,0 +1,204 @@
+Grundidé: Gateway som säkerhetscentral
+
+En API-gateway fungerar som en centraliserad punkt för att hantera autentisering, auktorisering, routing och annan säkerhet. Detta är särskilt användbart i en mikrotjänstmiljö där du vill undvika att implementera säkerhet på nytt i varje tjänst. Din gateway kan hantera:
+	1.	Autentisering: Verifiera användare (t.ex. via tokens, OAuth2, OpenID Connect).
+	2.	Auktorisering: Kontrollera användarens roller och behörigheter.
+	3.	Routing: Skicka vidare förfrågningar till rätt tjänst.
+	4.	Rate-limiting & Logging: Skydda och övervaka systemet.
+
+Användartjänst för inloggning och hantering av roller
+
+För att autentisera användare behöver du en användartjänst som:
+	•	Hantera inloggning och utloggning: T.ex. via användarnamn/lösenord eller externa autentiseringstjänster (Google, Azure AD).
+	•	Skapa och hantera användare och roller.
+	•	Utfärda tokens: T.ex. JWT (JSON Web Token) som gatewayen kan verifiera.
+
+Rollens betydelse
+
+Roller är centrala för att avgöra vad en användare kan göra:
+	•	Rollen tilldelas användaren i användartjänsten.
+	•	Gatewayen läser rollen från token (t.ex. JWT) och tillåter eller nekas åtkomst till tjänster baserat på roller.
+
+
+
+Kommunikation mellan tjänster
+
+För att dina tjänster ska kunna prata med varandra kan du:
+	1.	Autentisera tjänster mot gatewayen: Använd klientcertifikat eller “machine-to-machine tokens”.
+	2.	Intern kommunikation utan gateway: Tjänsterna kan prata direkt med varandra men använda en centraliserad identitetstjänst (t.ex. en token eller ACL-system).
+
+Kommunikation: Intern eller via gateway?
+
+	•	Via Gateway: Lätt att logga och säkra all trafik på ett ställe.
+	•	Direktkommunikation: Användbart för höghastighetskommunikation eller backend-processer som inte är exponerade utåt.
+
+
+Exempelarkitektur
+
+	1.	Gateway:
+	•	Verifierar alla inkommande förfrågningar.
+	•	Läser roller från tokens och beslutar om tillgång.
+	•	Skyddar och routar trafik till tjänster.
+	2.	Användartjänst:
+	•	Ansvarar för autentisering och hantering av användare/roller.
+	•	Utfärdar tokens som används av gatewayen och tjänster.
+	3.	Mikrotjänster:
+	•	Fokuserar på sin specifika domänlogik.
+	•	Pratar med gatewayen eller varandra vid behov.
+	4.	Kommunikationsprotokoll:
+	•	REST/GraphQL: För externa API:er.
+	•	gRPC/Message Queue: För intern kommunikation.
+
+Fördelar med detta upplägg
+
+	1.	Central säkerhet: Gatewayen hanterar autentisering och auktorisering på ett ställe.
+	2.	Modulär arkitektur: Tjänsterna kan utvecklas och deployas oberoende.
+	3.	Skalbarhet: Gateway och tjänster kan skalas individuellt.
+	4.	Enkelhet för utvecklare: Tjänster behöver inte bry sig om säkerhet i detalj.
+
+Nästa steg att tänka på
+
+	•	Behöver alla tjänster prata med varandra? Fundera på om du kan begränsa direktkommunikationen och förenkla.
+	•	Hantera roller och rättigheter: Hur detaljerat behöver du styra rollerna? Behövs ett RBAC-system (Role-Based Access Control)?
+	•	Val av teknik för gateway: Spring Cloud Gateway, Kong, eller något annat?
+	•	Token-hantering: Ska du använda JWT, OAuth2 eller något annat för tokens?
+
+Vad tror du om detta upplägg? Behöver vi iterera vidare?
+
+
+2. Prestanda och säkerhet
+
+Du nämner två saker här som är avgörande:
+	1.	Prestanda vid kommunikation mellan tjänster.
+	2.	Säkerhet genom att hålla tjänster interna.
+
+Direktkommunikation mellan tjänster
+
+Direktkommunikation mellan tjänster (t.ex., REST, gRPC) är snabbare än att alltid gå via gatewayen. Du kan fortfarande hålla det säkert genom att:
+	•	Hålla alla interna tjänster i ett privat nätverk (t.ex., en Kubernetes-cluster eller VPC).
+	•	Använda mTLS (mutual TLS) mellan tjänster för att säkerställa att bara godkända tjänster kan prata med varandra.
+
+Fördelar med direktkommunikation:
+	•	Mindre latens: Du hoppar över gatewayen för interna anrop.
+	•	Bra för frekventa operationer, t.ex., “Hämta kund”, “Kolla lagerstatus”.
+
+Kommunikation via gateway för vissa anrop
+
+För vissa operationer där säkerheten är viktigare än prestanda (t.ex., användares orderhistorik via frontend), är det bättre att gå via gatewayen.
+
+
+5. Sammanfattning – Nästa steg
+
+	1.	Implementera gateway-säkerhet:
+	•	Börja med autentisering via JWT och OAuth2.
+	•	Konfigurera roller och policyer för olika endpoints.
+	•	Säkra gatewayen med HTTPS och rate limiting.
+	2.	Planera intern tjänstkommunikation:
+	•	Definiera vilka tjänster som behöver prata med varandra.
+	•	Bestäm om du ska använda direktanrop, message queues (Kafka), eller båda.
+	3.	Utforska Kafka parallellt:
+	•	Läs om hur Kafka kan integreras som ett event-stream-system.
+	•	Planera en enkel pilot, t.ex., asynkron orderbehandling.
+	4.	Bygg vidare på helhetsstrukturen:
+	•	När gateway och säkerhet är stabilt, börja iterera på tjänster och deras kommunikation.
+
+
+
+1. Autentisering i Microservice
+
+Den initiala autentiseringen sker i en dedikerad autentiseringstjänst (t.ex., ditt Employee Management-system). Här genererar du en JWT-token efter att ha verifierat användarens inloggningsuppgifter.
+	•	Flödet i autentiseringstjänsten:
+	1.	Användaren loggar in med sina användaruppgifter (t.ex., användarnamn och lösenord).
+	2.	TokenServiceImpl genererar en RSA-signerad JWT-token som inkluderar:
+	•	subject (användarnamn eller användar-ID)
+	•	scope (roller/behörigheter)
+	•	Expiration
+	3.	Returnera JWT-token till användaren.
+
+
+2. JWT Verifiering i Gateway
+
+När användaren skickar förfrågningar via din gateway, kontrollerar den JWT-tokenen för att verifiera att:
+	1.	Token är signerad av rätt privata RSA-nyckel (via offentlig nyckel från jwks.json).
+	2.	Token inte har gått ut.
+	3.	Token innehåller korrekta roller/behörigheter.
+
+
+inför imorgon 22/11 -> testa genom gatewayen. Så att allt kan tas där och att vi kan använda oss valideringen
+
+Sen är det dags för antingen en frontend eller börja på lager
+
+
+Journal: Systemutveckling av säkerhetslösning för mikrotjänstarkitektur
+
+Datum: 24 november 2024
+
+Syfte:
+
+Utveckla och implementera en säkerhetslösning med autentisering och auktorisering för en mikrotjänstbaserad applikation, där en API Gateway fungerar som central punkt för trafik och säkerhetskontroller.
+
+1. Initialt Arbete
+
+Problemområde:
+Utveckling av en token-baserad autentiseringslösning med JWT för en applikation baserad på Spring Boot. Målet var att kunna hantera säkerhet mellan tjänster via en gateway och utnyttja RSA som signeringsmetod för ökad säkerhet.
+
+ Implementering av JWT och RSA
+
+JWT med RSA
+
+	•	Vi uppdaterade TokenService och säkerhetskonfigurationen för att använda RSA.
+	•	RSA implementerades dynamiskt genom att generera nyckelpar (publik och privat nyckel) vid start av applikationen.
+	•	JWT-token signerades med den privata nyckeln, och verifierades med den publika nyckeln i tjänster och gateway.
+
+Kodjusteringar:
+
+	•	I TokenService genererades JWT med hjälp av RSA.
+	•	Publik nyckel exponerades för tjänster via en JWK-endpoint.
+	•	Spring Security konfigurerades för att använda NimbusJwtDecoder och NimbusJwtEncoder.
+
+Utmaningar lösta:
+
+	•	Säker delning av publika nycklar till gatewayen via JWK.
+	•	Dynamisk nyckelhantering utan att hårdkoda nycklar.
+
+	. Gatewaykonfiguration
+
+    Konfiguration av API Gateway
+
+    	•	Gateway sattes upp för att routa trafik till autentiseringstjänsten (auth-service) och andra mikrotjänster (customer-service).
+    	•	Konfiguration av Spring Cloud Gateway för att hantera JWT-verifiering.
+    	•	Testade grundläggande ruttregler med Spring Security.
+
+Lösta utmaningar:
+
+	•	403-fel på grund av CSRF löstes genom att inaktivera CSRF i gatewayen och autentiseringstjänsten.
+
+ Autentisering och Auktorisering
+
+Autentisering:
+
+	•	En login-endpoint implementerades i auth-service för att autentisera användare och generera JWT.
+	•	Autentisering byggdes med AuthenticationManager och en anpassad UserDetailsService.
+
+Auktorisering via Gateway:
+
+	•	Gateway sattes upp för att hantera ruttåtkomst baserat på användarens roller i JWT.
+	•	Roller och claims extraherades från JWT och användes för att tillåta/nekas åtkomst till specifika endpoints.
+
+Kodjusteringar i Gateway:
+
+	•	JWT verifierades i gatewayens SecurityWebFilterChain.
+	•	Auktoriseringsregler baserade på roller lades till:
+
+
+
+Nackdelar eller saker att tänka på:
+
+	1.	Single point of failure:
+	•	Om din gateway blir otillgänglig, kan hela systemet bli oåtkomligt för externa användare. Detta kan hanteras genom att sätta upp redundans och skalning för gatewayen, men det är en aspekt att ta i beaktande.
+	2.	Komplexitet i gatewayen:
+	•	Gatewayen kan bli en flaskhals om den hanterar för mycket logik, så det är viktigt att hålla den så enkel och snabb som möjligt. Om du implementerar för mycket säkerhetslogik, kan det göra gatewayen mer komplex och svår att underhålla.
+	3.	Autentisering i mikrotjänster om det behövs:
+	•	I vissa fall kan det vara lämpligt att ha en grundläggande kontroll av autentisering eller auktorisering i varje mikrotjänst, särskilt om varje tjänst behöver ha detaljerad kontroll över vem som får åtkomst till specifika resurser eller om det finns mer komplexa säkerhetspolicys per tjänst.
+	4.	Single Responsibility Principle (SRP):
+	•	Om du centraliserar autentiseringen i gatewayen, kan det leda till att gatewayen får för mycket ansvar. Det är viktigt att vara medveten om detta och säkerställa att gatewayen inte får en för stor och svårhanterad uppgift. Du bör också hålla koll på att mikrotjänsterna inte blir för beroende av gatewayen, så att de är tillräckligt självständiga för att kunna ändras eller utvecklas utan att alla beroenden påverkas.

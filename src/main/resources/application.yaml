@@ -1,0 +1,31 @@
+
+
+spring:
+  cloud:
+    gateway:
+      routes:
+        - id: customer-route
+          uri: http://localhost:8081
+          predicates:
+            - Path=/v1/customer/**
+          filters:
+            - AddRequestHeader=Authorization, Bearer {token} # Replace {token} dynamically
+        - id: auth-route
+          uri: http://localhost:8082
+          predicates:
+            - Path=/v1/user-registration/**
+    security:
+      oauth2:
+        resourceserver:
+          jwt:
+            jwk-set-uri: "http://localhost:8082/v1/user-registration/jwks.json"
+  main:
+    web-application-type: reactive
+
+
+
+
+
+
+
+
