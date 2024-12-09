@@ -202,3 +202,7 @@ Nackdelar eller saker att tänka på:
 	•	I vissa fall kan det vara lämpligt att ha en grundläggande kontroll av autentisering eller auktorisering i varje mikrotjänst, särskilt om varje tjänst behöver ha detaljerad kontroll över vem som får åtkomst till specifika resurser eller om det finns mer komplexa säkerhetspolicys per tjänst.
 	4.	Single Responsibility Principle (SRP):
 	•	Om du centraliserar autentiseringen i gatewayen, kan det leda till att gatewayen får för mycket ansvar. Det är viktigt att vara medveten om detta och säkerställa att gatewayen inte får en för stor och svårhanterad uppgift. Du bör också hålla koll på att mikrotjänsterna inte blir för beroende av gatewayen, så att de är tillräckligt självständiga för att kunna ändras eller utvecklas utan att alla beroenden påverkas.
+
+
+
+Order och fakturering

@@ -18,7 +18,6 @@ public class SecurityConfiguration {
     public SecurityWebFilterChain securityFilterChain(ServerHttpSecurity http) throws Exception {
         return http.csrf(csrf -> csrf.disable())
                 .authorizeExchange(auth -> auth
-
                         .anyExchange().permitAll()
                 )
                 .oauth2ResourceServer(oauth2 -> oauth2
